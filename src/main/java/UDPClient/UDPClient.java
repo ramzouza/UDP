@@ -1,7 +1,6 @@
 package UDPClient;
 
 import Packet.Packet;
-
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.slf4j.Logger;

@@ -1,7 +1,7 @@
 package UDPServer;
 
-import Packet.Packet;
 
+import Packet.Packet;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.slf4j.Logger;
@@ -20,6 +20,20 @@ import static java.util.Arrays.asList;
 public class UDPServer {
 
     private static final Logger logger = LoggerFactory.getLogger(UDPServer.class);
+
+
+    public static void main(String[] args) throws IOException {
+        OptionParser parser = new OptionParser();
+        parser.acceptsAll(asList("port", "p"), "Listening port")
+                .withOptionalArg()
+                .defaultsTo("8007");
+
+        OptionSet opts = parser.parse(args);
+        int port = Integer.parseInt((String) opts.valueOf("port"));
+        UDPServer server = new UDPServer();
+        server.listenAndServe(port);
+    }
+
 
     private void listenAndServe(int port) throws IOException {
 
@@ -57,15 +71,5 @@ public class UDPServer {
         }
     }
 
-    public static void main(String[] args) throws IOException {
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("port", "p"), "Listening port")
-                .withOptionalArg()
-                .defaultsTo("8007");
 
-        OptionSet opts = parser.parse(args);
-        int port = Integer.parseInt((String) opts.valueOf("port"));
-        UDPServer server = new UDPServer();
-        server.listenAndServe(port);
-    }
 }
