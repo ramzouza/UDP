@@ -14,12 +14,14 @@ public class Packet {
 
     public static final int MIN_LEN = 11;
     public static final int MAX_LEN = 11 + 1024;
+    public static final int Max_PAYLOAD = 1013;
 
     private final int type;
     private final long sequenceNumber;
     private final InetAddress peerAddress;
     private final int peerPort;
     private final byte[] payload;
+    
 
     public Packet(int type, long sequenceNumber, InetAddress peerAddress, int peerPort, byte[] payload) {
         this.type = type;
@@ -29,9 +31,47 @@ public class Packet {
         this.payload = payload;
     }
 
+    public Packet(PacketTypes type, long sequenceNumber, InetAddress peerAddress, int peerPort, byte[] payload) {
+        this.type = this.ToType(type);
+        this.sequenceNumber = sequenceNumber;
+        this.peerAddress = peerAddress;
+        this.peerPort = peerPort;
+        this.payload = payload;
+    }
+
     public int getType() {
         return type;
     }
+
+    public PacketTypes getPacketType()
+    {
+        switch (this.type) {
+            case 0:  return PacketTypes.DATA;
+            case 1:  return PacketTypes.SYN;
+            case 2:  return PacketTypes.SYNACK;
+            case 3:  return PacketTypes.ACK;
+            case 4:  return PacketTypes.NACK;
+            case 5:  return PacketTypes.FIN;
+            default:
+                return PacketTypes.ERROR;
+        }
+    }
+
+    public int ToType(PacketTypes t)
+    {
+        switch (t) {
+            case DATA:  return 0;
+            case SYN:  return 1;
+            case SYNACK:  return 2;
+            case ACK:  return 3;
+            case NACK:  return 4;
+            case FIN:  return 5;
+        
+            default:
+            return -1 ;
+        }
+    }
+
 
     public long getSequenceNumber() {
         return sequenceNumber;
@@ -48,6 +88,11 @@ public class Packet {
     public byte[] getPayload() {
         return payload;
     }
+
+    public String getClientId(){
+        return this.peerAddress.toString() + ":" + this.peerPort; 
+    }
+
 
     /**
      * Creates a builder from the current packet.
