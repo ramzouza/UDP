@@ -1,6 +1,8 @@
 package UDPServer;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 
@@ -22,7 +24,6 @@ import UDPClient.Response;
 
 public class ServerWorker implements Runnable {
 
-    private Socket _socket;
     private RequestBuilder req;
     private Response _response;
     private String _path;
@@ -31,26 +32,28 @@ public class ServerWorker implements Runnable {
     private boolean _isVerbose;
     
     private String _id;
-    private PacketTypes status;
-    private int sequenceNumber;
+    private PacketTypes _type;
+    private long _sequenceNumber;
+    private byte [] _data;
 
-    public ServerWorker(ServerLock locks, String rootFolder, Socket socket, boolean isVerbose)
+
+
+    public ServerWorker(ServerLock locks, String rootFolder, boolean isVerbose, String id, long sequenceNumber)
     {
         this._locks = locks;
         this._rootFolder = rootFolder.toLowerCase();
-        this._socket = socket;
         this._isVerbose = isVerbose;
-        this.println("client connected");
-     }
+        this._id = id;
+        this._sequenceNumber = sequenceNumber;
+    }
 
-    public void Process()
+	public void Process()
     {
         try {
             
-            PrintWriter out = new PrintWriter(this._socket.getOutputStream());
-   
-            
-            Scanner in = new Scanner(this._socket.getInputStream());
+            InputStream inputStream = new ByteArrayInputStream(_data);         
+            Scanner in = new Scanner(inputStream);
+
             this.evaluateFirstline( in .nextLine());
             this.req.parseRequest( in );
             this.println(this.req.toString());
@@ -71,8 +74,9 @@ public class ServerWorker implements Runnable {
             // send response
             this.println("--- Server Response ---");
             this.println(this._response.verboseToString(true));
-            out.write(this._response.verboseToString(true));
-            out.close();
+            
+            //out.write(this._response.verboseToString(true));
+            //out.close();
             this.println("\n\n Waiting for new request");    
         } catch (Exception e) {
             //TODO: handle exception
@@ -313,5 +317,40 @@ public class ServerWorker implements Runnable {
     @Override
     public void run() {
         this.Process();
+    }
+
+    public String get_id() {
+        return _id;
+    }
+
+    public void set_id(String _id) {
+        this._id = _id;
+    }
+
+    public PacketTypes get_type() {
+        return _type;
+    }
+
+    public void set_type(PacketTypes _type) {
+        this._type = _type;
+    }
+
+    public long get_sequenceNumber() {
+        return _sequenceNumber;
+    }
+
+    public void set_sequenceNumber(int _sequenceNumber) {
+        this._sequenceNumber = _sequenceNumber;
+    }
+
+    public byte [] get_data() {
+        return this._data;
+    }
+
+    public void appendData(byte [] _data) {
+        byte[] temp = new byte [this._data.length +_data.length];
+        System.arraycopy(this._data, 0, temp, 0, this._data.length);
+        System.arraycopy(_data, 0, temp, this._data.length, _data.length);
+        this._data = temp; 
     }
 }

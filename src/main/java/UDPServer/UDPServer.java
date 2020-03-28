@@ -16,6 +16,7 @@ import java.nio.ByteOrder;
 import java.nio.channels.DatagramChannel;
 import java.util.Arrays;
 import java.util.Dictionary;
+import java.util.Hashtable;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
@@ -38,7 +39,8 @@ public class UDPServer {
     String payload;
     private DatagramChannel channel;
     private SocketAddress router;
-    private Dictionary<String,ServerWorker> workers ;
+    Hashtable<String, ServerWorker> _clients = new Hashtable<String, ServerWorker>();
+    
     ByteBuffer buf;
 
     public static void main(String[] args) throws IOException {
@@ -70,24 +72,23 @@ public class UDPServer {
                 buf.flip();
                 Packet packet = Packet.fromBuffer(buf);
                 buf.flip();
-                switch (packet.getPacketType()) {
+                switch (packet.getType()) {
                     
                     case DATA: 
-                        //processData(packet);
-                    case SYN:  
-   
-                    case SYNACK:  
+                        processData(packet);
+                    case SYN:
+                        processSyn(packet);
+                    case SYNACK:
+                        
                     case ACK:  
+                        processAck(packet);
                     case NACK:  
+                    
                     case FIN:  
                 
                     default:
                         break;
                 }
-
-
-
-
 
 				payload= new String(packet.getPayload(), UTF_8);
 
@@ -126,37 +127,50 @@ public class UDPServer {
         }
     }
 
+    private boolean init(int port)
+    {
+        try {
+            channel = DatagramChannel.open(); 
+            channel.bind(new InetSocketAddress(port));
+            logger.info("EchoServer is listening at {}", channel.getLocalAddress());
+            buf = ByteBuffer
+                    .allocate(Packet.MAX_LEN)
+                    .order(ByteOrder.BIG_ENDIAN);  
+            
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+        
+    }
     // return final sequence number
     private long sendMessage (PacketTypes type, long sequenceNumber, InetAddress peerAddress, int peerPort, byte[] payload)    {
       
         if (payload == null || payload.length < Packet.Max_PAYLOAD) {
+            
             sequenceNumber = sequenceNumber ++;
-            sendMessage(new Packet(type, sequenceNumber, peerAddress, peerPort, payload));
+            sendMessage(new Packet (type,sequenceNumber, peerAddress , peerPort , payload));
             return sequenceNumber;
         }
 
         else if (payload.length == Packet.Max_PAYLOAD)
         {
             sequenceNumber = sequenceNumber ++;
-            sendMessage(new Packet(type, sequenceNumber, peerAddress, peerPort, payload));
+            sendMessage(new Packet (type,sequenceNumber, peerAddress , peerPort , payload));
             sequenceNumber = sequenceNumber ++;
-            sendMessage(new Packet(type, sequenceNumber, peerAddress, peerPort, new byte[0]));            
+            sendMessage(new Packet (type,sequenceNumber, peerAddress , peerPort , new byte[0]));
             return sequenceNumber;                           
         }
 
         else if (payload.length > Packet.Max_PAYLOAD)
         {
             sequenceNumber = sequenceNumber ++;
-            sendMessage(new Packet(type, sequenceNumber, peerAddress, peerPort,  Arrays.copyOf(payload, Packet.Max_PAYLOAD)));
+            sendMessage(new Packet (type,sequenceNumber, peerAddress , peerPort , Arrays.copyOf(payload, Packet.Max_PAYLOAD)));
             sequenceNumber = sequenceNumber ++;
-            sendMessage(type, sequenceNumber, peerAddress, peerPort,  Arrays.copyOf(payload, Packet.Max_PAYLOAD+1, payload.length));
-            return sequenceNumber;
-        }
-
-
-       Packet packet = new Packet(type, sequenceNumber++, peerAddress, peerPort, payload);                   
-       return 0;
-        
+            return sendMessage(type,sequenceNumber, peerAddress , peerPort , Arrays.copyOfRange(payload, Packet.Max_PAYLOAD + 1, payload.length));
+            
+        }       
+        return 0;
     }
 
     private void  sendMessage (Packet packet)
@@ -176,23 +190,60 @@ public class UDPServer {
        
     }
     
-    private boolean init(int port)
-    {
-        try {
-            channel = DatagramChannel.open(); 
-            channel.bind(new InetSocketAddress(port));
-            logger.info("EchoServer is listening at {}", channel.getLocalAddress());
-            buf = ByteBuffer
-                    .allocate(Packet.MAX_LEN)
-                    .order(ByteOrder.BIG_ENDIAN);  
-            
-            return true;
-        } catch (Exception e) {
-            return false;
+    private void processSyn(Packet packet){
+        if (_clients.containsKey(packet.getClientId()))
+        {
+            logger.info("SYN rejected client is already in communication with server ", packet);
+            return ;
+            // skip any other computation
         }
-        
+       
+        String payload = "SYN has been acknowledged by server";  
+        logger.info("SYN has been acknowledged by server ", packet);
+        Packet response = new Packet (SYNACK, packet.getSequenceNumber() + 1, packet.getPeerAddress() , packet.getPeerPort(), payload.getBytes());
+        _clients.put(packet.getClientId(), new ServerWorker(new ServerLock(), "rootfolder", false, packet.getClientId(), response.getSequenceNumber()));
+        sendMessage(response);
     }
 
+    private void processAck(Packet packet){
+        if (!_clients.containsKey(packet.getClientId()))
+        {
+            logger.info("SYNACK rejected client has never started communication with server ", packet);
+            return ;
+            // skip any other computation
+        }      
+        logger.info("ACK has been acknowledged by server ", packet);
+        ServerWorker temp = _clients.get(packet.getClientId());
+        temp.set_type(PacketTypes.ACK);
+    }
    
+    private void processData(Packet packet)
+    {
+        if (!_clients.containsKey(packet.getClientId()))
+        {
+            logger.info("Client has not done a handhsake", packet);
+            return ;
+        }
+        ServerWorker sw = _clients.get(packet.getClientId());
+        if(sw.get_type() != PacketTypes.ACK )
+        {
+            logger.info("Client has not completed a handhsake", packet);
+            return ;
+        }
+
+        if (packet.getPayload().length != 0)
+        {
+            //String temp = new String(packet.getPayload(), UTF_8);
+            sw.appendData(packet.getPayload());
+        }
+        if (packet.getPayload().length != Packet.Max_PAYLOAD)
+        {
+            sw.Process();
+        }
+
+
+    }
+
+    
 
 }

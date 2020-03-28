@@ -32,7 +32,7 @@ public class Packet {
     }
 
     public Packet(PacketTypes type, long sequenceNumber, InetAddress peerAddress, int peerPort, byte[] payload) {
-        this.type = this.ToType(type);
+        this.type = ToType(type);
         this.sequenceNumber = sequenceNumber;
         this.peerAddress = peerAddress;
         this.peerPort = peerPort;
@@ -43,9 +43,9 @@ public class Packet {
         return type;
     }
 
-    public PacketTypes getPacketType()
+    public static  PacketTypes getPacketType(int type)
     {
-        switch (this.type) {
+        switch (type) {
             case 0:  return PacketTypes.DATA;
             case 1:  return PacketTypes.SYN;
             case 2:  return PacketTypes.SYNACK;
@@ -57,7 +57,7 @@ public class Packet {
         }
     }
 
-    public int ToType(PacketTypes t)
+    public static int ToType(PacketTypes t)
     {
         switch (t) {
             case DATA:  return 0;
