@@ -66,30 +66,39 @@ public class UDPServer {
             for (; ; ) {
                 buf.clear();
 
-                router = channel.receive(buf);
+                router =new InetSocketAddress("localhost",3000); 
+                channel.receive(buf);
 
                 // Parse a packet from the received raw data.
                 buf.flip();
-                Packet packet = Packet.fromBuffer(buf);
+                Packet request = Packet.fromBuffer(buf);
                 buf.flip();
-                switch (packet.getType()) {
+                switch (request.getType()) {
                     
                     case DATA: 
-                        processData(packet);
+                        processData(request);
+                        break;
                     case SYN:
-                        processSyn(packet);
+                        processSyn(request);
+                        break;
                     case SYNACK:
                         
                     case ACK:  
-                        processAck(packet);
+                        processAck(request);
+                        break;
                     case NACK:  
                     
                     case FIN:  
                 
                     default:
                         break;
+                        //channel.close();
+            //channel = null;
+ 
                 }
-
+            }
+        }
+                /*
 				payload= new String(packet.getPayload(), UTF_8);
 
 
@@ -117,10 +126,9 @@ public class UDPServer {
 
             //sendResponse(packet);
             }
-
-            //channel.close();
-            //channel = null;
-        } 
+        }
+                       */
+        
         catch (IOException e)
         {
 
@@ -178,11 +186,7 @@ public class UDPServer {
         try {
             if(this.channel != null)
             {
-            Packet resp = packet.toBuilder()
-                    .setPayload(payload.getBytes())
-                    .create();
-            channel.send(resp.toBuffer(), router);
-        
+            channel.send(packet.toBuffer(), router);
             }     
         } catch (Exception e) {
             //TODO: handle exception
