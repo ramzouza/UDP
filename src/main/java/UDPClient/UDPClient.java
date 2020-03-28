@@ -16,6 +16,7 @@ import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Set;
 
 import static java.nio.channels.SelectionKey.OP_READ;
@@ -26,7 +27,15 @@ public class UDPClient {
     private DatagramChannel channel;
     private String payload;
     private SocketAddress router;
-    private boolean handshake = false;
+    private int reconnect = 0;
+
+    private final int DATA = 0;
+    private final int SYN = 1;
+    private final int SYN_ACK = 2;
+    private final int ACK = 3;
+    private final int NACK = 4;
+    private final int FIN = 5;
+    private final int ALLOWED_RECONNECT = 10;
 
     public static void main(String[] args) throws IOException {
         OptionParser parser = new OptionParser();
@@ -54,20 +63,15 @@ public class UDPClient {
         //runClient(routerAddress, serverAddress);
     }
 
-    private void runClient(SocketAddress routerAddr, InetSocketAddress serverAddr, String[] args)
+    private void runClient(SocketAddress routerAddr, InetSocketAddress serverAddr)
             throws IOException {
         try {
             channel = DatagramChannel.open();
 
-            if (handshake)
+            if (!connect(routerAddr,serverAddr) && reconnect < ALLOWED_RECONNECT )
             {
-                // send message 
+                logger.info("failed to establish connection with the server");
             }
-            else {
-                
-                sendMessage(null);
-            }
-
             // create packet
             String msg = "Hello World";
             Packet p = new Packet.Builder().setType(0).setSequenceNumber(1L).setPortNumber(serverAddr.getPort())
@@ -105,8 +109,7 @@ public class UDPClient {
         }
     }
 
-    private long sendMessage(PacketTypes type, long sequenceNumber, InetAddress peerAddress, int peerPort,
-            byte[] payload) {
+    private long sendMessage(PacketTypes type, long sequenceNumber, InetAddress peerAddress, int peerPort, byte[] payload) {
 
         if (payload == null || payload.length < Packet.Max_PAYLOAD) {
             sequenceNumber = sequenceNumber++;
@@ -153,5 +156,50 @@ public class UDPClient {
        
     }
   
+    private boolean connect(SocketAddress routerAddr, InetSocketAddress serverAddr)
+    {
+         // Try to receive a packet within timeout.
+         try {
+
+            Packet message = new Packet (SYN, 100, serverAddr.getAddress() , serverAddr.getPort(), new byte [0]);
+            sendMessage(message);         
+
+            channel.configureBlocking(false);
+            Selector selector = Selector.open();
+            channel.register(selector, OP_READ);
+            logger.info("Waiting for the response");
+            selector.select(5000);
+            Set<SelectionKey> keys = selector.selectedKeys();
+
+            if(keys.isEmpty())
+            {
+                return false;
+            }
+            else 
+            {
+                ByteBuffer buf = ByteBuffer.allocate(Packet.MAX_LEN);
+                SocketAddress router = channel.receive(buf);
+                buf.flip();
+                keys.clear();
+                message = Packet.fromBuffer(buf);
+
+                if(Packet.getPacketType(message.getType()) != PacketTypes.SYNACK)
+                {
+                    return false;
+                }
+                else 
+                {
+                    sendMessage(new Packet (ACK , 100, serverAddr.getAddress() , serverAddr.getPort(), new byte [0]));
+                    return true;
+                }
+            }
+
+         } catch (IOException e) {
+             // TODO Auto-generated catch block
+             e.printStackTrace();
+         }         
+        return false;
+    }
+
 }
 

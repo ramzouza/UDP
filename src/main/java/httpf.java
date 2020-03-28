@@ -38,9 +38,9 @@ public class httpf {
             Socket socket = server.accept();
             if (socket != null)
             {
-                ServerWorker worker = new ServerWorker(httpf.Locks, parameter.getPath(), socket, parameter.isVerbose());
-                Thread t = new Thread(worker);
-                t.start();
+            //    ServerWorker worker = new ServerWorker(httpf.Locks, parameter.getPath(), socket, parameter.isVerbose());
+            //     Thread t = new Thread(worker);
+            //    t.start();
                 // worker.Process();
             }
         }

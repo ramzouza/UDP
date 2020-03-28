@@ -48,19 +48,19 @@ public class httpc {
             System.exit(0);
         }
       
-        Client net = new Client(req, parameter.getURL());
-        net.request();
+       // Client net = new Client(req, parameter.getURL());
+       // net.request();
 
         if (parameter.isOutputToFile()) {
-            outputToFile(net,args[args.length-1],parameter.isVerbose());
+        //    outputToFile(net,args[args.length-1],parameter.isVerbose());
             System.exit(0);
         }
 
         if (parameter.isVerbose()) {
-            System.out.println(net.getRes().verboseToString(false));
+        //    System.out.println(net.getRes().verboseToString(false));
         } 
         else {
-            System.out.println(net.getRes().toString());
+        //    System.out.println(net.getRes().toString());
         }
 
     }
@@ -185,15 +185,15 @@ public class httpc {
 
     }
 
-    public static void outputToFile(Client net, String outputFile, Boolean verbose) {
+    public static void outputToFile(UDPClient net, String outputFile, Boolean verbose) {
         try {
             BufferedWriter writer = new BufferedWriter(new FileWriter("C:\\Github\\Network\\"+outputFile));
             if(verbose)
             {
-                writer.write(net.getRes().verboseToString(false));
+               // writer.write(net.getRes().verboseToString(false));
             }
             else {
-                writer.write(net.getRes().toString());
+               // writer.write(net.getRes().toString());
             }
             writer.close();
         } catch (IOException e) {
