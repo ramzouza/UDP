@@ -4,6 +4,8 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import Builder.GETRequestBuilder;
 import Builder.POSTRequestBuilder;
@@ -13,9 +15,10 @@ import UDPClient.UDPClient;
 public class httpc {
 
     static Argument parameter = new Argument();
+    private static final Logger logger = LoggerFactory.getLogger(httpc.class);
 
     public static void main(String[] args) {     
-//      args = new String[] { "POST" , "-h", "Content-Length:12", "-d", "Hello world!" , "http://localhost:8080/bob.txt"};
+      args = new String[] { "POST" , "-h", "Content-Length:12", "-d", "Hello world!" , "http://localhost:8007/bob.txt"};
 //      args = new String[] { "GET" , "http://httpbin.org/get?course=networking&assignment=1"};
         for (int i = 0; i < args.length; i++) {
                     if (args[0].equals("help")) {
@@ -48,18 +51,21 @@ public class httpc {
             System.exit(0);
         }
       
-       // Client net = new Client(req, parameter.getURL());
-       // net.request();
+        UDPClient net = new UDPClient(req, parameter.getURL(), parameter.getRouter());
+        net.request();
+       
 
         if (parameter.isOutputToFile()) {
-        //    outputToFile(net,args[args.length-1],parameter.isVerbose());
+           outputToFile(net,args[args.length-1],parameter.isVerbose());
             System.exit(0);
         }
 
         if (parameter.isVerbose()) {
-        //    System.out.println(net.getRes().verboseToString(false));
+            logger.info("Server response\n",net.getRes().verboseToString(false));
+            System.out.println(net.getRes().verboseToString(false));
         } 
         else {
+            logger.info(net.getRes().verboseToString(true));
         //    System.out.println(net.getRes().toString());
         }
 
@@ -80,6 +86,9 @@ public class httpc {
         if (contains(args, "-f")) {
             parameter.setFile(true);
             setBodyF(args);
+        }
+        if(contains(args,"-r")){
+            setRouter(args);
         }
         if (args[args.length - 2].equals("-o")) {
             parameter.setOutputToFile(true);            
@@ -150,6 +159,14 @@ public class httpc {
         parameter.setRequestType(arguments[0].toUpperCase() + " ");
     }
 
+    public static void setRouter(String[] arguments){
+        for (int i = 0; i < arguments.length; i++) {
+            if (arguments[i].equalsIgnoreCase("-r")) {
+                parameter.setRouter(arguments[i+1]);
+            }
+        }
+    }
+
     public static void setBodyD(String[] arguments) {
         for (int i = 0; i < arguments.length; i++) {
             if (arguments[i].equalsIgnoreCase("-d")) {
@@ -190,10 +207,10 @@ public class httpc {
             BufferedWriter writer = new BufferedWriter(new FileWriter("C:\\Github\\Network\\"+outputFile));
             if(verbose)
             {
-               // writer.write(net.getRes().verboseToString(false));
+                writer.write(net.getRes().verboseToString(false));
             }
             else {
-               // writer.write(net.getRes().toString());
+                writer.write(net.getRes().toString());
             }
             writer.close();
         } catch (IOException e) {

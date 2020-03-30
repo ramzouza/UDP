@@ -4,7 +4,6 @@ import java.nio.file.Paths;
 import UDPServer.ServerWorker;
 import UDPServer.ServerLock;
 
-import UDPServer.Server;
 
 public class httpf {
     static serverArgument parameter = new serverArgument();
@@ -32,11 +31,11 @@ public class httpf {
 
 
         initArgument(args);
-        Server server = new Server(Integer.parseInt(parameter.getPort()), "localhost");
-        server.initSocket();
+        //Server server = new Server(Integer.parseInt(parameter.getPort()), "localhost");
+        //server.initSocket();
         while (true) {
-            Socket socket = server.accept();
-            if (socket != null)
+          //  Socket socket = server.accept();
+           // if (socket != null)
             {
             //    ServerWorker worker = new ServerWorker(httpf.Locks, parameter.getPath(), socket, parameter.isVerbose());
             //     Thread t = new Thread(worker);

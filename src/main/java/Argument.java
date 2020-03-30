@@ -3,6 +3,7 @@ public class Argument {
     private String requestType;
     private String header;
     private String URL;
+    private String router;
     private String body;
     private boolean verbose;
     private boolean data;
@@ -13,16 +14,17 @@ public class Argument {
         this.verbose = false;
         this.requestType = "";
         this.URL = "";
+        this.router = "";
         this.header = "";
         this.data = false;
         this.file = false;
         this.outputToFile = false;  
+        
            }
    
     public boolean isVerbose() {
         return verbose;
     }
-
     public void setVerbose(boolean verbose) {
         this.verbose = verbose;
     }
@@ -30,33 +32,35 @@ public class Argument {
     public String getRequestType() {
         return requestType;
     }
-
     public void setRequestType(String requestType) {
         this.requestType = requestType;
     }
 
+
     public String getHeader() {
         return header;
     }
-
     public void addHeader(String header) {
         this.header += header;
     }
 
-
-
     public String getURL() {
         return URL;
     }
-
     public void setURL(String uRL) {
         URL = uRL;
+    }
+
+    public String getRouter() {
+        return router;
+    }
+    public void setRouter(String rt) {
+        router = rt;
     }
 
     public String getBody() {
         return body;
     }
-
     public void setBody(String body) {
         this.body = body;
     }
@@ -64,7 +68,6 @@ public class Argument {
     public boolean isData() {
         return data;
     }
-
     public void setData(boolean data) {
         this.data = data;
     }
@@ -72,7 +75,6 @@ public class Argument {
     public boolean isFile() {
         return file;
     }
-
     public void setFile(boolean file) {
         this.file = file;
     }
@@ -80,7 +82,6 @@ public class Argument {
     public boolean isOutputToFile() {
         return outputToFile;
     }
-
     public void setOutputToFile(boolean outputToFile) {
         this.outputToFile = outputToFile;
     }

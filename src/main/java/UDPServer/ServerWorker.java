@@ -3,9 +3,6 @@ package UDPServer;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
-import java.io.PrintWriter;
-import java.net.Socket;
-
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,7 +10,6 @@ import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
 import java.util.Scanner;
-
 
 import Builder.GETRequestBuilder;
 import Builder.POSTRequestBuilder;
@@ -347,10 +343,29 @@ public class ServerWorker implements Runnable {
         return this._data;
     }
 
-    public void appendData(byte [] _data) {
-        byte[] temp = new byte [this._data.length +_data.length];
+    public void appendData(byte [] data) {
+        if (this._data == null || this._data.length == 0)
+        {
+            this._data = data;     
+            return;
+        }
+
+        if (data == null || data.length == 0)
+        {
+            return;
+        }
+
+        byte[] temp = new byte [this._data.length + data.length];
         System.arraycopy(this._data, 0, temp, 0, this._data.length);
-        System.arraycopy(_data, 0, temp, this._data.length, _data.length);
+        System.arraycopy(data, 0, temp, this._data.length, data.length);
         this._data = temp; 
+    }
+
+    public Response get_response() {
+        return _response;
+    }
+
+    public void set_response(Response _response) {
+        this._response = _response;
     }
 }

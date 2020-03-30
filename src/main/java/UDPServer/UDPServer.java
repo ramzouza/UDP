@@ -73,16 +73,14 @@ public class UDPServer {
                 buf.flip();
                 Packet request = Packet.fromBuffer(buf);
                 buf.flip();
-                switch (request.getType()) {
-                    
+                switch (request.getType()) {                    
                     case DATA: 
                         processData(request);
                         break;
                     case SYN:
                         processSyn(request);
                         break;
-                    case SYNACK:
-                        
+                    case SYNACK:                       
                     case ACK:  
                         processAck(request);
                         break;
@@ -234,20 +232,21 @@ public class UDPServer {
             logger.info("Client has not completed a handhsake", packet);
             return ;
         }
-
+        
         if (packet.getPayload().length != 0)
         {
+            sendMessage(PacketTypes.ACK,packet.getSequenceNumber(), packet.getPeerAddress() , packet.getPeerPort(), new byte[0]);
             //String temp = new String(packet.getPayload(), UTF_8);
             sw.appendData(packet.getPayload());
         }
         if (packet.getPayload().length != Packet.Max_PAYLOAD)
         {
             sw.Process();
+            sendMessage(PacketTypes.DATA,packet.getSequenceNumber() + 1, packet.getPeerAddress() , packet.getPeerPort(), sw.get_response().verboseToString(true).getBytes());                   
         }
-
+        
 
     }
-
     
 
 }

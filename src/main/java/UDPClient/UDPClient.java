@@ -7,16 +7,23 @@ import joptsimple.OptionSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import Builder.RequestBuilder;
+
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
 import java.net.SocketAddress;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Scanner;
 import java.util.Set;
 
 import static java.nio.channels.SelectionKey.OP_READ;
@@ -27,6 +34,7 @@ public class UDPClient {
     private static DatagramChannel channel;
     private static String payload;
     private static SocketAddress router;
+    InetSocketAddress serverAddress;
     private static int reconnect = 0;
 
     private final int DATA = 0;
@@ -37,81 +45,82 @@ public class UDPClient {
     private final int FIN = 5;
     private final static int ALLOWED_RECONNECT = 10;
 
-    public static void main(String[] args) throws IOException {
-        OptionParser parser = new OptionParser();
-        parser.accepts("router-host", "Router hostname").withOptionalArg().defaultsTo("localhost");
+    private String routerHost = "localhost";
+    private int routerPort = 3000;
+    private String serverHost = "localhost";
+    private int serverPort = 8007;
 
-        parser.accepts("router-port", "Router port number").withOptionalArg().defaultsTo("3000");
+    RequestBuilder request;
+    private String sAddress;
+    private String rAddress;
+    private long sequenceNumber=1;
+    private Response res;
 
-        parser.accepts("server-host", "EchoServer hostname").withOptionalArg().defaultsTo("localhost");
-
-        parser.accepts("server-port", "EchoServer listening port").withOptionalArg().defaultsTo("8007");
-
-        OptionSet opts = parser.parse(args);
-
-        // Router address
-        String routerHost = (String) opts.valueOf("router-host");
-        int routerPort = Integer.parseInt((String) opts.valueOf("router-port"));
-
-        // Server address
-        String serverHost = (String) opts.valueOf("server-host");
-        int serverPort = Integer.parseInt((String) opts.valueOf("server-port"));
-
-        router = new InetSocketAddress(routerHost, routerPort);
-        InetSocketAddress serverAddress = new InetSocketAddress(serverHost, serverPort);
-
-        runClient(router, serverAddress);
+    public UDPClient(RequestBuilder req, String sv, String rt) {
+        this.request = req;
+        this.sAddress = sv;
+        this.rAddress = rt;
     }
 
-    private static void runClient(SocketAddress routerAddr, InetSocketAddress serverAddr) throws IOException {
+    public void request() {
+             
+        verifyURL();
+
+        router = new InetSocketAddress(routerHost, routerPort);
+        serverAddress = new InetSocketAddress(serverHost, serverPort);
+
+        runClient(router, serverAddress);
+ 
+    }
+
+    private void runClient(SocketAddress routerAddr, InetSocketAddress serverAddr) {
         try {
             channel = DatagramChannel.open();
 
-            if (!connect(routerAddr, serverAddr) && reconnect < ALLOWED_RECONNECT) {
+            if (!connect(serverAddr) && reconnect < ALLOWED_RECONNECT) {
                 logger.info("failed to establish connection with the server");
-            }
-
-
-            /*
-            // create packet
-            String msg = "Hello World";
-            Packet p = new Packet.Builder().setType(0).setSequenceNumber(1L).setPortNumber(serverAddr.getPort())
-                    .setPeerAddress(serverAddr.getAddress()).setPayload(msg.getBytes()).create();
-            channel.send(p.toBuffer(), routerAddr);
-
-            logger.info("Sending \"{}\" to router at {}", msg, routerAddr);
-
-            // Try to receive a packet within timeout.
-            channel.configureBlocking(false);
-            Selector selector = Selector.open();
-            channel.register(selector, OP_READ);
-            logger.info("Waiting for the response");
-            selector.select(5000);
-
-            Set<SelectionKey> keys = selector.selectedKeys();
-            if (keys.isEmpty()) {
-                logger.error("No response after timeout");
                 return;
             }
+            
+            Packet data = sendRequest();
+            // send request (1 or many messages)
+            
+            if(data == null)
+            {
+                data = sendRequest();
+            }
 
-            // We just want a single response.
-            ByteBuffer buf = ByteBuffer.allocate(Packet.MAX_LEN);
-            SocketAddress router = channel.receive(buf);
-            buf.flip();
-            Packet resp = Packet.fromBuffer(buf);
-            logger.info("Packet: {}", resp);
-            logger.info("Router: {}", router);
-            String payload = new String(resp.getPayload(), StandardCharsets.UTF_8);
-            logger.info("Payload: {}", payload);
+            InputStream inputStream = new ByteArrayInputStream(data.getPayload());         
+            Scanner in = new Scanner(inputStream);
+            buildResponse(in);
 
-            keys.clear();
-            */
         } catch (IOException e) {
 
         }
     }
 
-    private long sendMessage(PacketTypes type, long sequenceNumber, InetAddress peerAddress, int peerPort,byte[] payload) {
+    private Packet sendRequest()
+    {
+        sendMessage(PacketTypes.DATA, sequenceNumber, serverAddress.getAddress(), serverPort, request.toString().getBytes());
+        
+        Packet ack = retrievePacket();
+
+        if (ack == null || Packet.getPacketType(ack.getType()) != PacketTypes.ACK) 
+        {
+            return null;
+        }
+        Packet data = retrievePacket();
+
+        if (data == null || Packet.getPacketType(data.getType()) != PacketTypes.DATA) 
+        {
+            return null;
+        }
+        return data;
+       
+    }
+
+    private long sendMessage(PacketTypes type, long sequenceNumber, InetAddress peerAddress, int peerPort,
+            byte[] payload) {
 
         if (payload == null || payload.length < Packet.Max_PAYLOAD) {
             sequenceNumber = sequenceNumber++;
@@ -141,9 +150,9 @@ public class UDPClient {
         return 0;
     }
 
-    private static void sendMessage(Packet packet) {
+    private void sendMessage(Packet packet) {
         try {
-            if (channel != null) { 
+            if (channel != null) {
                 channel.send(packet.toBuffer(), router);
             }
         } catch (Exception e) {
@@ -152,43 +161,140 @@ public class UDPClient {
 
     }
 
-    private static boolean connect(SocketAddress routerAddr, InetSocketAddress serverAddr) {
+    private boolean connect(InetSocketAddress serverAddr) {
         // Try to receive a packet within timeout.
-        try {
-
-            Packet message = new Packet(SYN, 100, serverAddr.getAddress(), serverAddr.getPort(), new byte[0]);
+       
+            Packet message = new Packet(SYN, sequenceNumber, serverAddr.getAddress(), serverAddr.getPort(), new byte[0]);
             sendMessage(message);
 
+            Packet returned = retrievePacket();
+
+                if (returned == null || Packet.getPacketType(returned.getType()) != PacketTypes.SYNACK) 
+                {
+                    return false;
+                } 
+                else 
+                {
+                    sendMessage(new Packet(ACK, 100, serverAddr.getAddress(), serverAddr.getPort(), new byte[0]));
+                    return true;
+                }
+
+    }
+
+    private void verifyURL() {
+         
+        try {            
+        URL sURL = new URL(sAddress);          
+        if (sURL.getHost() != null && !sURL.getHost().isEmpty())
+        {
+            this.serverHost = sURL.getHost(); 
+        }
+        if (sURL.getPort() > 0 )
+        {
+            this.serverPort = sURL.getPort(); 
+        }
+        }
+        catch(MalformedURLException e) {
+
+        }
+        try{
+        URL rURL = new URL (rAddress);
+        if (rURL.getHost() != null && !rURL.getHost().isEmpty())
+        {
+            this.routerHost = rURL.getHost(); 
+        }
+        if (rURL.getPort() > 0 )
+        {
+            this.routerPort = rURL.getPort(); 
+        }     
+        } catch (MalformedURLException e) {
+            // TODO Auto-generated catch block
+        }
+        
+    }
+
+    public void buildResponse (Scanner in){
+
+        if(in.hasNext() && in.hasNextLine())
+        {
+            evaluateFirstline(in.nextLine());
+        }
+        String header = "";
+        String entity = "";
+
+        while ( in .hasNextLine()) {
+        String temp = (String)in.nextLine();   
+      
+        if (temp.equals(""))
+        {
+                res.setHeader(header);
+                while ( in .hasNextLine()) {
+                    entity += (String)in.nextLine() + "\r\n";
+                }
+                
+                res.setEntityBody(entity);
+        }
+        else{
+            header += temp + "\r\n";
+        }
+        
+           
+    }
+   
+}
+
+    public void evaluateFirstline (String content)
+    {
+        String [] values = content.split(" ");
+        String phrase = "";
+        if (values.length > 2)
+        {
+            phrase = values[2];
+        }
+
+        for (int i = 3; i < values.length; i++) {
+            phrase += " " + values[i];
+        }
+
+        res = new Response(values[0], values[1], phrase, "", "");
+    }
+
+    public Response getRes() {
+        return this.res;
+    }
+
+    public void setRes(Response res) {
+        this.res = res;
+    }
+
+    private Packet retrievePacket()
+    {
+        try {
             channel.configureBlocking(false);
             Selector selector = Selector.open();
             channel.register(selector, OP_READ);
             logger.info("Waiting for the response");
-            selector.select(5000);
+            selector.select(500000000);
             Set<SelectionKey> keys = selector.selectedKeys();
-
-            if (keys.isEmpty()) {
-                return false;
-            } else {
+    
+            if (keys.isEmpty()) 
+            {
+                return null;
+            } 
+            else 
+            {
                 ByteBuffer buf = ByteBuffer.allocate(Packet.MAX_LEN);
-                SocketAddress router = channel.receive(buf);
+                channel.receive(buf);
                 buf.flip();
                 keys.clear();
-                message = Packet.fromBuffer(buf);
+                return  Packet.fromBuffer(buf);
+            } 
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
-                if (Packet.getPacketType(message.getType()) != PacketTypes.SYNACK) {
-                    return false;
-                } else {
-                    sendMessage(new Packet(ACK, 100, serverAddr.getAddress(), serverAddr.getPort(), new byte[0]));
-                    return true;
-                }
-            }
-
-         } catch (IOException e) {
-             // TODO Auto-generated catch block
-             e.printStackTrace();
-         }         
-        return false;
+        return null;    
     }
-
 }
 

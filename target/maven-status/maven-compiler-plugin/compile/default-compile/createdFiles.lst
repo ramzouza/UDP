@@ -1,6 +1,5 @@
 Builder\GETRequestBuilder.class
 Argument.class
-UDPServer\Server.class
 Packet\Packet$Builder.class
 httpc.class
 Packet\Packet.class
