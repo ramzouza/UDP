@@ -2,6 +2,7 @@ import java.io.File;
 import java.net.Socket;
 import java.nio.file.Paths;
 import UDPServer.ServerWorker;
+import UDPServer.UDPServer;
 import UDPServer.ServerLock;
 
 
@@ -31,9 +32,14 @@ public class httpf {
 
 
         initArgument(args);
-        //Server server = new Server(Integer.parseInt(parameter.getPort()), "localhost");
+        UDPServer server = new UDPServer(Integer.parseInt(parameter.getPort()));
+        if(server.init(server.getPort()))
+        {
+            server.listenAndServe();
+        }
+       
         //server.initSocket();
-        while (true) {
+       // while (true) {
           //  Socket socket = server.accept();
            // if (socket != null)
             {
@@ -41,7 +47,7 @@ public class httpf {
             //     Thread t = new Thread(worker);
             //    t.start();
                 // worker.Process();
-            }
+         //   }
         }
 
     }
@@ -68,7 +74,6 @@ public class httpf {
         }
     }
 
-
     public static boolean isSecure() {
         if (parameter.getPath() == null)
         {
@@ -85,7 +90,6 @@ public class httpf {
         parameter.setPath(wdir.getPath());
         return true;
     }
-
 
     private static void setPath(String[] arguments) {
         for (int i = 0; i < arguments.length; i++) {

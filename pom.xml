@@ -132,7 +132,29 @@
                                 httpc
                             </finalName>
                             <appendAssemblyId>false</appendAssemblyId>
+                        </configuration>                        
+                    </execution>
+                    <execution>
+                        <id>httpf</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>httpf</mainClass>
+                                </manifest>
+                            </archive>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <finalName>
+                                httpf
+                            </finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
                         </configuration>
+                        
                     </execution>
                 </executions>
             </plugin>

@@ -18,8 +18,8 @@ public class httpc {
     private static final Logger logger = LoggerFactory.getLogger(httpc.class);
 
     public static void main(String[] args) {     
-      args = new String[] { "POST" , "-h", "Content-Length:12", "-d", "Hello world!" , "http://localhost:8007/bob.txt"};
-//      args = new String[] { "GET" , "http://httpbin.org/get?course=networking&assignment=1"};
+    //args = new String[] { "POST" , "-h", "Content-Length:12", "-d", "Hello world!" , "http://localhost:8007/bob2.txt"};
+    //args = new String[] { "GET" , "http://localhost:8007/bob2.txt"};
         for (int i = 0; i < args.length; i++) {
                     if (args[0].equals("help")) {
                         try {

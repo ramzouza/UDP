@@ -42,24 +42,17 @@ public class UDPServer {
     Hashtable<String, ServerWorker> _clients = new Hashtable<String, ServerWorker>();
     
     ByteBuffer buf;
+    
+    private int port;
 
-    public static void main(String[] args) throws IOException {
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("port", "p"), "Listening port")
-                .withOptionalArg()
-                .defaultsTo("8007");
 
-        OptionSet opts = parser.parse(args);
-        int port = Integer.parseInt((String) opts.valueOf("port"));
-        UDPServer server = new UDPServer();
-        if(server.init(port))
-        {
-        server.listenAndServe();
-        }
+    public UDPServer(int newPort)
+    {
+        this.port = newPort;
     }
 
-
-    private void listenAndServe()  {
+   
+    public void listenAndServe()  {
 
         try{
 
@@ -133,7 +126,7 @@ public class UDPServer {
         }
     }
 
-    private boolean init(int port)
+    public boolean init(int port)
     {
         try {
             channel = DatagramChannel.open(); 
@@ -141,8 +134,7 @@ public class UDPServer {
             logger.info("EchoServer is listening at {}", channel.getLocalAddress());
             buf = ByteBuffer
                     .allocate(Packet.MAX_LEN)
-                    .order(ByteOrder.BIG_ENDIAN);  
-            
+                    .order(ByteOrder.BIG_ENDIAN);             
             return true;
         } catch (Exception e) {
             return false;
@@ -248,5 +240,23 @@ public class UDPServer {
 
     }
     
+    public int getPort()
+    {
+        return this.port;
+    }
+    public static void main(String[] args) throws IOException {
+        OptionParser parser = new OptionParser();
+        parser.acceptsAll(asList("port", "p"), "Listening port")
+                .withOptionalArg()
+                .defaultsTo("8007");
+
+        OptionSet opts = parser.parse(args);
+        int port = Integer.parseInt((String) opts.valueOf("port"));
+        //UDPServer server = new UDPServer();
+       // if(server.init(port))
+        {
+        //server.listenAndServe();
+        }
+    }
 
 }
