@@ -6,6 +6,7 @@ c:\Github\UDP\src\main\java\UDPServer\ServerLock.java
 c:\Github\UDP\src\main\java\httpc.java
 c:\Github\UDP\src\main\java\Packet\protocol.java
 c:\Github\UDP\src\main\java\httpf.java
+c:\Github\UDP\src\main\java\protocol\receiveBuffer.java
 c:\Github\UDP\src\main\java\UDPClient\Response.java
 c:\Github\UDP\src\main\java\UDPServer\ServerWorker.java
 c:\Github\UDP\src\main\java\Argument.java
@@ -13,3 +14,4 @@ c:\Github\UDP\src\main\java\Packet\PacketTypes.java
 c:\Github\UDP\src\main\java\UDPClient\UDPClient.java
 c:\Github\UDP\src\main\java\Builder\POSTRequestBuilder.java
 c:\Github\UDP\src\main\java\Packet\Packet.java
+c:\Github\UDP\src\main\java\protocol\sendBuffer.java

@@ -4,6 +4,9 @@ import Packet.Packet;
 import Packet.PacketTypes;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import protocol.receiveBuffer;
+import protocol.sendBuffer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +28,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Scanner;
 import java.util.Set;
+ 
+
 
 import static java.nio.channels.SelectionKey.OP_READ;
 
@@ -53,7 +58,7 @@ public class UDPClient {
     RequestBuilder request;
     private String sAddress;
     private String rAddress;
-    private long sequenceNumber=1;
+    private long currentSequenceNumber=100;
     private Response res;
 
     public UDPClient(RequestBuilder req, String sv, String rt) {
@@ -82,72 +87,42 @@ public class UDPClient {
                 return;
             }
             
-            Packet data = sendRequest();
-            // send request (1 or many messages)
-            
-            if(data == null)
-            {
-                data = sendRequest();
-            }
+            sendBuffer sender = new sendBuffer(serverAddress.getAddress(), serverPort, request.toString().getBytes());
+            receiveBuffer receiver = new receiveBuffer(serverAddress.getAddress(), serverPort, sender.getSequenceNumber());
 
-            InputStream inputStream = new ByteArrayInputStream(data.getPayload());         
-            Scanner in = new Scanner(inputStream);
-            buildResponse(in);
+            while(true)
+            {
+                if (sender != null)
+                {
+                    sender.process(channel, router);
+                }
+
+                Packet p = this.retrievePacket();
+                if (p != null)
+                {
+                    if (p.getPacketType() == PacketTypes.ACK && sender != null)
+                    {
+                        if (sender.ack(p))
+                        {
+                            sender = null;
+                        }
+                    }
+                    else if (p.getPacketType() == PacketTypes.DATA)
+                    {
+                        if (receiver.processPacket(p, channel, router))
+                        {
+                            InputStream inputStream = new ByteArrayInputStream(receiver.getPayload());         
+                            Scanner in = new Scanner(inputStream);
+                            buildResponse(in);
+                            break;
+                        }
+                    }
+                } 
+            }
 
         } catch (IOException e) {
 
         }
-    }
-
-    private Packet sendRequest()
-    {
-        sendMessage(PacketTypes.DATA, sequenceNumber, serverAddress.getAddress(), serverPort, request.toString().getBytes());
-        
-        Packet ack = retrievePacket();
-
-        if (ack == null || Packet.getPacketType(ack.getType()) != PacketTypes.ACK) 
-        {
-            return null;
-        }
-        Packet data = retrievePacket();
-
-        if (data == null || Packet.getPacketType(data.getType()) != PacketTypes.DATA) 
-        {
-            return null;
-        }
-        return data;
-       
-    }
-
-    private long sendMessage(PacketTypes type, long sequenceNumber, InetAddress peerAddress, int peerPort,
-            byte[] payload) {
-
-        if (payload == null || payload.length < Packet.Max_PAYLOAD) {
-            sequenceNumber = sequenceNumber++;
-
-            sendMessage(new Packet.Builder().setType(Packet.ToType(type)).setSequenceNumber(sequenceNumber)
-                    .setPeerAddress(peerAddress).setPortNumber(peerPort).setPayload(payload).create());
-            return sequenceNumber;
-        }
-
-        else if (payload.length == Packet.Max_PAYLOAD) {
-            sequenceNumber = sequenceNumber++;
-            sendMessage(new Packet(type, sequenceNumber, peerAddress, peerPort, payload));
-            sequenceNumber = sequenceNumber++;
-            sendMessage(new Packet(type, sequenceNumber, peerAddress, peerPort, new byte[0]));
-            return sequenceNumber;
-        }
-
-        else if (payload.length > Packet.Max_PAYLOAD) {
-            sequenceNumber = sequenceNumber++;
-            sendMessage(new Packet(type, sequenceNumber, peerAddress, peerPort,
-                    Arrays.copyOf(payload, Packet.Max_PAYLOAD)));
-            sequenceNumber = sequenceNumber++;
-            return sendMessage(type, sequenceNumber, peerAddress, peerPort,
-                    Arrays.copyOfRange(payload, Packet.Max_PAYLOAD + 1, payload.length));
-
-        }
-        return 0;
     }
 
     private void sendMessage(Packet packet) {
@@ -160,11 +135,12 @@ public class UDPClient {
         }
 
     }
-
-    private boolean connect(InetSocketAddress serverAddr) {
+    //handshake
+    private boolean connect(InetSocketAddress serverAddr) 
+    {
         // Try to receive a packet within timeout.
        
-            Packet message = new Packet(SYN, sequenceNumber, serverAddr.getAddress(), serverAddr.getPort(), new byte[0]);
+            Packet message = new Packet(SYN, currentSequenceNumber, serverAddr.getAddress(), serverAddr.getPort(), new byte[0]);
             sendMessage(message);
 
             Packet returned = retrievePacket();
@@ -175,10 +151,28 @@ public class UDPClient {
                 } 
                 else 
                 {
-                    sendMessage(new Packet(ACK, 100, serverAddr.getAddress(), serverAddr.getPort(), new byte[0]));
+                    currentSequenceNumber = currentSequenceNumber +1;
+                    sendMessage(new Packet(ACK, currentSequenceNumber, serverAddr.getAddress(), serverAddr.getPort(), new byte[0]));
                     return true;
                 }
+    }
 
+    private boolean endConnection(InetSocketAddress serverAddr)
+    {
+        Packet message = new Packet(FIN, currentSequenceNumber, serverAddr.getAddress(), serverAddr.getPort(), new byte[0]);
+        sendMessage(message);
+
+        Packet returned = retrievePacket();
+
+            if (returned == null || Packet.getPacketType(returned.getType()) != PacketTypes.ACK) 
+            {
+                return false;
+            } 
+            else 
+            {
+                //end the connection
+                return true;
+            }
     }
 
     private void verifyURL() {
@@ -274,7 +268,7 @@ public class UDPClient {
             Selector selector = Selector.open();
             channel.register(selector, OP_READ);
             logger.info("Waiting for the response");
-            selector.select(500000000);
+            selector.select(5000);
             Set<SelectionKey> keys = selector.selectedKeys();
     
             if (keys.isEmpty()) 

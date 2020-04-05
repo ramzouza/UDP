@@ -5,6 +5,8 @@ Packet\protocol.class
 httpc.class
 Packet\Packet.class
 UDPClient\UDPClient.class
+protocol\receiveBuffer.class
+protocol\sendBuffer.class
 Builder\RequestBuilder.class
 UDPServer\ServerLock.class
 UDPClient\Response.class

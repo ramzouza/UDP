@@ -44,7 +44,7 @@ public class UDPServer {
     ByteBuffer buf;
     
     private int port;
-
+    private int currentSequenceNumber;
 
     public UDPServer(int newPort)
     {
@@ -182,8 +182,8 @@ public class UDPServer {
             //TODO: handle exception
         }
        
-    }
-    
+    }   
+
     private void processSyn(Packet packet){
         if (_clients.containsKey(packet.getClientId()))
         {
@@ -191,10 +191,15 @@ public class UDPServer {
             return ;
             // skip any other computation
         }
-       
+        if (packet.getSequenceNumber() != 100)
+        {
+            logger.info("SYN rejected sequence number is not 100 ", packet);
+            return ;
+        }
+
         String payload = "SYN has been acknowledged by server";  
         logger.info("SYN has been acknowledged by server ", packet);
-        Packet response = new Packet (SYNACK, packet.getSequenceNumber() + 1, packet.getPeerAddress() , packet.getPeerPort(), payload.getBytes());
+        Packet response = new Packet (SYNACK, packet.getSequenceNumber(), packet.getPeerAddress() , packet.getPeerPort(), payload.getBytes());
         _clients.put(packet.getClientId(), new ServerWorker(new ServerLock(), "rootfolder", false, packet.getClientId(), response.getSequenceNumber()));
         sendMessage(response);
     }
@@ -205,7 +210,13 @@ public class UDPServer {
             logger.info("SYNACK rejected client has never started communication with server ", packet);
             return ;
             // skip any other computation
-        }      
+        }   
+        if (packet.getSequenceNumber() != 101)
+        {
+            logger.info("SYN rejected sequence number is not 101 ", packet);
+            return ;
+        }
+
         logger.info("ACK has been acknowledged by server ", packet);
         ServerWorker temp = _clients.get(packet.getClientId());
         temp.set_type(PacketTypes.ACK);
@@ -227,9 +238,9 @@ public class UDPServer {
         
         if (packet.getPayload().length != 0)
         {
-            sendMessage(PacketTypes.ACK,packet.getSequenceNumber(), packet.getPeerAddress() , packet.getPeerPort(), new byte[0]);
-            //String temp = new String(packet.getPayload(), UTF_8);
+            sendMessage(PacketTypes.ACK,packet.getSequenceNumber(), packet.getPeerAddress() , packet.getPeerPort(), new byte[0]);           
             sw.appendData(packet.getPayload());
+            sw.set_type(PacketTypes.DATA);
         }
         if (packet.getPayload().length != Packet.Max_PAYLOAD)
         {

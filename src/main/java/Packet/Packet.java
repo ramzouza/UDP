@@ -10,7 +10,7 @@ import java.nio.ByteOrder;
  * Packet represents a simulated network packet.
  * As we don't have unsigned types in Java, we can achieve this by using a larger type.
  */
-public class Packet {
+public class Packet  {
 
     public static final int MIN_LEN = 11;
     public static final int MAX_LEN = 11 + 1024;
@@ -43,7 +43,11 @@ public class Packet {
         return type;
     }
 
-    public static  PacketTypes getPacketType(int type)
+    public PacketTypes getPacketType() {
+        return Packet.getPacketType(this.type);
+    }
+
+    public static PacketTypes getPacketType(int type)
     {
         switch (type) {
             case 0:  return PacketTypes.DATA;
@@ -215,4 +219,10 @@ public class Packet {
             return new Packet(type, sequenceNumber, peerAddress, portNumber, payload);
         }
     }
+
+
+
+
+
+
 }

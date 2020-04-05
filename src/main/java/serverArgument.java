@@ -8,7 +8,7 @@ public class serverArgument {
 
     serverArgument() {
         this.verbose = false;
-        this.port = "8080";
+        this.port = "8007";
         this.path = "/";
     }
    
