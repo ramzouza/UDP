@@ -15,12 +15,11 @@ public class sendBuffer {
     private ArrayList<Packet> _packetList = new ArrayList<Packet>();
     private long _lastTime = 0; // System.currentTimeMillis();
     private final long timeOut = 5000L;
-    private final int ISN = 101;
     private long sequenceNumber;
     
-    public sendBuffer(InetAddress peerAddress, int peerPort, byte[] payload) 
+    public sendBuffer(InetAddress peerAddress, int peerPort, byte[] payload, long initSequenceNumber) 
     {
-        sequenceNumber = ISN;
+        sequenceNumber = initSequenceNumber;
         while(true)
         {
             if (payload == null || payload.length < Packet.Max_PAYLOAD) 

@@ -14,13 +14,14 @@ public class Packet  {
 
     public static final int MIN_LEN = 11;
     public static final int MAX_LEN = 11 + 1024;
-    public static final int Max_PAYLOAD = 1013;
+    public static final int Max_PAYLOAD = 1030;
 
     private final int type;
     private final long sequenceNumber;
     private final InetAddress peerAddress;
     private final int peerPort;
     private final byte[] payload;
+    private String _clientId;
     
 
     public Packet(int type, long sequenceNumber, InetAddress peerAddress, int peerPort, byte[] payload) {
@@ -29,6 +30,7 @@ public class Packet  {
         this.peerAddress = peerAddress;
         this.peerPort = peerPort;
         this.payload = payload;
+        this._clientId = this.peerAddress.toString() + ":" + this.peerPort; 
     }
 
     public Packet(PacketTypes type, long sequenceNumber, InetAddress peerAddress, int peerPort, byte[] payload) {
@@ -37,6 +39,7 @@ public class Packet  {
         this.peerAddress = peerAddress;
         this.peerPort = peerPort;
         this.payload = payload;
+        this._clientId = this.peerAddress.toString() + ":" + this.peerPort; 
     }
 
     public int getType() {
@@ -94,7 +97,7 @@ public class Packet  {
     }
 
     public String getClientId(){
-        return this.peerAddress.toString() + ":" + this.peerPort; 
+        return this._clientId;
     }
 
 

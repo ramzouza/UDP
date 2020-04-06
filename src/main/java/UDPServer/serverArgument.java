@@ -1,3 +1,5 @@
+package UDPServer;
+
 import Builder.*;
 
 
@@ -6,7 +8,7 @@ public class serverArgument {
     private String port;
     private String path;
 
-    serverArgument() {
+    public serverArgument() {
         this.verbose = false;
         this.port = "8007";
         this.path = "/";

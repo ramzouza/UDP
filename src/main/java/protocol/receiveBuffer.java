@@ -1,14 +1,38 @@
 package protocol;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.nio.channels.Selector;
+import java.nio.channels.SelectionKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import Packet.Packet;
 import Packet.PacketTypes;
+
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
+import protocol.receiveBuffer;
+import protocol.sendBuffer;
+
+import Builder.RequestBuilder;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Scanner;
+
 
 public class receiveBuffer {
     
@@ -26,11 +50,11 @@ public class receiveBuffer {
 
     public boolean processPacket(Packet packet, DatagramChannel channel, SocketAddress router)
     {
-        int index = Math.toIntExact(packet.getSequenceNumber()-this._sentSequenceNumber-1);
+        int index = Math.toIntExact(packet.getSequenceNumber() - this._sentSequenceNumber - 1);
         if (index >= 0)
         {
-            this.ensureSize(index);
-            this._packetList.add(index, packet);                 
+            this.ensureSize(index + 1);
+            this._packetList.set(index, packet);                 
             this.sendAck(packet, channel, router);
             return this.isComplete();
         }
@@ -86,7 +110,7 @@ public class receiveBuffer {
         {
             if (channel != null) 
             {
-                Packet p = new Packet(PacketTypes.ACK, packet.getSequenceNumber(), _peerAddress, _peerPort, null); 
+                Packet p = new Packet(PacketTypes.ACK, packet.getSequenceNumber(), _peerAddress, _peerPort, new byte [0]); 
                 channel.send(p.toBuffer(), router);
             }
         } 
@@ -104,5 +128,43 @@ public class receiveBuffer {
                 this._packetList.add(null);
             }
         }
+    }
+
+    public InetAddress getPeerAddress() {
+        return _peerAddress;
+    }
+
+    public int getPeerPort() {
+        return _peerPort;
+    }
+
+    public static Packet ReadNextPacket(DatagramChannel channel, Logger logger)
+    {
+        try {
+            channel.configureBlocking(false);
+            Selector selector = Selector.open();
+            channel.register(selector,1); // OP_READ);
+            //logger.info("Waiting for a packet");
+            selector.select(500);
+            Set<SelectionKey> keys = selector.selectedKeys();
+    
+            if (keys.isEmpty()) 
+            {
+                return null;
+            } 
+            else 
+            {
+                ByteBuffer buf = ByteBuffer.allocate(Packet.MAX_LEN);
+                channel.receive(buf);
+                buf.flip();
+                keys.clear();
+                return  Packet.fromBuffer(buf);
+            } 
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        return null;    
     }
 }

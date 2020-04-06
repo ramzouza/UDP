@@ -3,6 +3,9 @@ package UDPServer;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.SocketAddress;
+import java.nio.channels.DatagramChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,15 +13,27 @@ import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
 import java.util.Scanner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import Builder.GETRequestBuilder;
 import Builder.POSTRequestBuilder;
 import Builder.RequestBuilder;
-import Packet.PacketTypes;
+import Packet.Packet;
 import UDPClient.Response;
 
+import protocol.receiveBuffer;
+import protocol.sendBuffer;
 
-public class ServerWorker implements Runnable {
+
+public class ServerWorker implements Runnable  {
+    public static final int CREATED = 0;
+    public static final int RECEIVE_DATA = 1;
+    public static final int PROCESSING = 2;
+    public static final int REPLYING = 3;
+    public static final int COMPLETED = 4;
+
+    private static final Logger logger = LoggerFactory.getLogger(ServerWorker.class);
 
     private RequestBuilder req;
     private Response _response;
@@ -28,22 +43,77 @@ public class ServerWorker implements Runnable {
     private boolean _isVerbose;
     
     private String _id;
-    private PacketTypes _type;
     private long _sequenceNumber;
     private byte [] _data;
 
+    private sendBuffer _sender; 
+    private receiveBuffer _receiver; 
+    private int _status;
 
-
-    public ServerWorker(ServerLock locks, String rootFolder, boolean isVerbose, String id, long sequenceNumber)
+    public ServerWorker(ServerLock locks, String rootFolder, boolean isVerbose, String id, long sequenceNumber, InetAddress peerAddress, int peerPort)
     {
+        this._status = ServerWorker.CREATED;
         this._locks = locks;
         this._rootFolder = rootFolder.toLowerCase();
         this._isVerbose = isVerbose;
         this._id = id;
-        this._sequenceNumber = sequenceNumber;
+        this._receiver = new receiveBuffer(peerAddress, peerPort, ++sequenceNumber);
     }
 
-	public void Process()
+    public void processData(Packet packet, DatagramChannel channel, SocketAddress router)
+    {
+        if (this._status != ServerWorker.CREATED && this._status != ServerWorker.RECEIVE_DATA)
+        {
+            return;
+        }
+
+        this._status = ServerWorker.RECEIVE_DATA;
+
+        if (this._receiver != null && this._receiver.processPacket(packet, channel, router))
+        {
+            //should only enter this once
+            this._status = ServerWorker.PROCESSING;
+            this._sequenceNumber = packet.getSequenceNumber();
+            new Thread(this).start();
+       }
+    }
+
+    @Override
+    public void run() 
+    {
+        this._data = this._receiver.getPayload();
+        this.processRequest();
+        this._sender = new sendBuffer(this._receiver.getPeerAddress(), this._receiver.getPeerPort(), this._response.verboseToString(true).getBytes(), this._sequenceNumber);
+        this._receiver = null;
+        this._status = ServerWorker.REPLYING;
+    }
+
+    public void process(DatagramChannel channel, SocketAddress router)
+    {
+        if (this._status == ServerWorker.REPLYING && this._sender != null)
+        {
+            this._sender.process(channel, router);
+        }
+    }
+
+    public boolean processAck(Packet ack)
+    {
+        if (this._sender != null && this._sender.ack(ack))
+        {
+            this._sender = null;
+            this._status = ServerWorker.COMPLETED;
+            return true;
+        }
+
+        return false;
+    }
+
+    public int getStatus ()
+    {
+        return this._status;
+    } 
+
+	private void processRequest()
     {
         try {
             
@@ -66,6 +136,7 @@ public class ServerWorker implements Runnable {
             {
                 this.executePost();
             }
+            logger.info("reponse is ***** \n\n\n " + this._response.verboseToString(true));
             
             // send response
             this.println("--- Server Response ---");
@@ -107,6 +178,8 @@ public class ServerWorker implements Runnable {
         this.println("processing GET");
         
         try {
+            logger.info("request path is " + this._path);
+            logger.info("request path is " + Paths.get(this._path).toAbsolutePath().normalize().toString());
            File f = new File(Paths.get(this._path).toAbsolutePath().normalize().toString());
            if (!f.exists())
            {
@@ -310,10 +383,6 @@ public class ServerWorker implements Runnable {
         }
     }
 
-    @Override
-    public void run() {
-        this.Process();
-    }
 
     public String get_id() {
         return _id;
@@ -323,42 +392,16 @@ public class ServerWorker implements Runnable {
         this._id = _id;
     }
 
-    public PacketTypes get_type() {
-        return _type;
-    }
+    // public long get_sequenceNumber() {
+    //     return _sequenceNumber;
+    // }
 
-    public void set_type(PacketTypes _type) {
-        this._type = _type;
-    }
-
-    public long get_sequenceNumber() {
-        return _sequenceNumber;
-    }
-
-    public void set_sequenceNumber(int _sequenceNumber) {
-        this._sequenceNumber = _sequenceNumber;
-    }
+    // public void set_sequenceNumber(int _sequenceNumber) {
+    //     this._sequenceNumber = _sequenceNumber;
+    // }
 
     public byte [] get_data() {
         return this._data;
-    }
-
-    public void appendData(byte [] data) {
-        if (this._data == null || this._data.length == 0)
-        {
-            this._data = data;     
-            return;
-        }
-
-        if (data == null || data.length == 0)
-        {
-            return;
-        }
-
-        byte[] temp = new byte [this._data.length + data.length];
-        System.arraycopy(this._data, 0, temp, 0, this._data.length);
-        System.arraycopy(data, 0, temp, this._data.length, data.length);
-        this._data = temp; 
     }
 
     public Response get_response() {
@@ -368,4 +411,5 @@ public class ServerWorker implements Runnable {
     public void set_response(Response _response) {
         this._response = _response;
     }
+
 }

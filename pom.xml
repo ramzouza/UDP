@@ -136,7 +136,7 @@
                     </execution>
                     <execution>
                         <id>httpf</id>
-                        <phase>package</phase>
+                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>

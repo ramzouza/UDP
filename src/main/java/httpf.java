@@ -3,12 +3,13 @@ import java.net.Socket;
 import java.nio.file.Paths;
 import UDPServer.ServerWorker;
 import UDPServer.UDPServer;
+import UDPServer.serverArgument;
 import UDPServer.ServerLock;
 
 
 public class httpf {
     static serverArgument parameter = new serverArgument();
-    static String DefaultWorkingDirectory = "C:\\Github\\Network\\Network\\Files";
+    static String DefaultWorkingDirectory = "C:\\Github\\UDP\\rootfolder";
     static ServerLock Locks = new ServerLock();
     public static void main(String[] args) {
 //        args = new String[] { "-v" , "-p","200"};
@@ -30,9 +31,8 @@ public class httpf {
             }
         }
 
-
         initArgument(args);
-        UDPServer server = new UDPServer(Integer.parseInt(parameter.getPort()));
+        UDPServer server = new UDPServer(Integer.parseInt(parameter.getPort()), parameter);
         if(server.init(server.getPort()))
         {
             server.listenAndServe();

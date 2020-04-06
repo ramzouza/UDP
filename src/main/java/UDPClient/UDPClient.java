@@ -79,15 +79,15 @@ public class UDPClient {
     }
 
     private void runClient(SocketAddress routerAddr, InetSocketAddress serverAddr) {
-        try {
+        try 
+        {
             channel = DatagramChannel.open();
-
-            if (!connect(serverAddr) && reconnect < ALLOWED_RECONNECT) {
+            if (!this.tryConnect(serverAddr)) {
                 logger.info("failed to establish connection with the server");
                 return;
             }
             
-            sendBuffer sender = new sendBuffer(serverAddress.getAddress(), serverPort, request.toString().getBytes());
+            sendBuffer sender = new sendBuffer(serverAddress.getAddress(), serverPort, request.toString().getBytes(),101);
             receiveBuffer receiver = new receiveBuffer(serverAddress.getAddress(), serverPort, sender.getSequenceNumber());
 
             while(true)
@@ -120,9 +120,17 @@ public class UDPClient {
                 } 
             }
 
-        } catch (IOException e) {
+            if (!this.tryEndConnect(serverAddr)) {
+                logger.info("failed to  end connection with the server");
+                return;
+            }    
+            
+        } 
+        catch (IOException e) 
+        {
 
         }
+
     }
 
     private void sendMessage(Packet packet) {
@@ -136,10 +144,37 @@ public class UDPClient {
 
     }
     //handshake
+
+    private boolean tryConnect(InetSocketAddress serverAddr)
+    {
+        for (int i=0; i< ALLOWED_RECONNECT; i++)
+        {
+            if (this.connect(serverAddr))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+   
+    private boolean tryEndConnect(InetSocketAddress serverAddr)
+    {
+        for (int i=0; i< ALLOWED_RECONNECT; i++)
+        {
+            if (this.endConnection(serverAddr))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private boolean connect(InetSocketAddress serverAddr) 
     {
         // Try to receive a packet within timeout.
-       
+        logger.info("staring handshake");
             Packet message = new Packet(SYN, currentSequenceNumber, serverAddr.getAddress(), serverAddr.getPort(), new byte[0]);
             sendMessage(message);
 
@@ -159,13 +194,14 @@ public class UDPClient {
 
     private boolean endConnection(InetSocketAddress serverAddr)
     {
-        Packet message = new Packet(FIN, currentSequenceNumber, serverAddr.getAddress(), serverAddr.getPort(), new byte[0]);
+        Packet message = new Packet(FIN, 5000, serverAddr.getAddress(), serverAddr.getPort(), new byte[0]);
         sendMessage(message);
 
         Packet returned = retrievePacket();
 
             if (returned == null || Packet.getPacketType(returned.getType()) != PacketTypes.ACK) 
             {
+               
                 return false;
             } 
             else 
@@ -268,7 +304,7 @@ public class UDPClient {
             Selector selector = Selector.open();
             channel.register(selector, OP_READ);
             logger.info("Waiting for the response");
-            selector.select(5000);
+            selector.select(500);
             Set<SelectionKey> keys = selector.selectedKeys();
     
             if (keys.isEmpty()) 
