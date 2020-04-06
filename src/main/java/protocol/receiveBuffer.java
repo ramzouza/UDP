@@ -122,9 +122,10 @@ public class receiveBuffer {
 
     private void ensureSize(int size)
     {
-        if (this._packetList.size() < size)
+        int arrayListSize = this._packetList.size();
+        if (arrayListSize < size)
         {
-            for (int i = 0; i < size - this._packetList.size(); i++) {
+            for (int i = 0; i < size - arrayListSize; i++) {
                 this._packetList.add(null);
             }
         }
