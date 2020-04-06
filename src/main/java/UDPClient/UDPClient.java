@@ -83,7 +83,7 @@ public class UDPClient {
         {
             channel = DatagramChannel.open();
             if (!this.tryConnect(serverAddr)) {
-                logger.info("failed to establish connection with the server");
+                logger.info("failed to establish /connection with the server");
                 return;
             }
             

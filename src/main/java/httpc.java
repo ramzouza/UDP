@@ -32,7 +32,6 @@ public class httpc {
                         System.out.println(help(args[1]));
                         System.exit(0);
                     }
-
         }
         initArgument(args);
         RequestBuilder req = null;
@@ -56,7 +55,7 @@ public class httpc {
        
 
         if (parameter.isOutputToFile()) {
-           outputToFile(net,args[args.length-1],parameter.isVerbose());
+            outputToFile(net,args[args.length-1],parameter.isVerbose());
             System.exit(0);
         }
 
@@ -65,7 +64,7 @@ public class httpc {
             System.out.println(net.getRes().verboseToString(false));
         } 
         else {
-            logger.info(net.getRes().verboseToString(true));
+            logger.info(net.getRes().toString());
         //    System.out.println(net.getRes().toString());
         }
 

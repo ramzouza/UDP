@@ -95,7 +95,10 @@ public class UDPServer {
         {
             channel = DatagramChannel.open(); 
             channel.bind(new InetSocketAddress(port));
-            logger.info("EchoServer is listening at {}", channel.getLocalAddress());
+            if(_args.isVerbose())
+            {
+                logger.info("EchoServer is listening at {}", channel.getLocalAddress());
+            }
             buf = ByteBuffer
                     .allocate(Packet.MAX_LEN)
                     .order(ByteOrder.BIG_ENDIAN);             
@@ -123,7 +126,11 @@ public class UDPServer {
     }   
 
     private void processSyn(Packet packet){
-        logger.info("processing SYN ", packet);
+        if(_args.isVerbose())
+        {
+            logger.info("processing SYN ", packet);
+        }
+      
         if (packet.getSequenceNumber() != 100)
         {
             logger.info("SYN rejected sequence number is not 100 ", packet);
@@ -141,7 +148,10 @@ public class UDPServer {
         }
 
         String payload = "SYN has been acknowledged by server";  
-        logger.info("SYN has been acknowledged by server ", packet);
+        if(_args.isVerbose())
+        {
+            logger.info("SYN has been acknowledged by server ", packet);
+        }
         Packet response = new Packet (SYNACK, packet.getSequenceNumber(), packet.getPeerAddress() , packet.getPeerPort(), payload.getBytes());
         sendMessage(response);
 
@@ -155,7 +165,10 @@ public class UDPServer {
 
     private void processData(Packet packet)
     {
-        logger.info("processing Data ", packet);
+        if(_args.isVerbose())
+        {
+            logger.info("processing Data ", packet);
+        }
         if (!this._clients.containsKey(packet.getClientId()))
         {
             logger.info("Client has not done a handhsake", packet);
@@ -166,7 +179,10 @@ public class UDPServer {
     }
     
     private void processAck(Packet packet){
-        logger.info("Processing Ack ", packet);
+        if(_args.isVerbose())
+        {
+            logger.info("Processing Ack ", packet);
+        }
         if (!_clients.containsKey(packet.getClientId()))
         {
             logger.info("SYNACK rejected client has never started communication with server ", packet);
@@ -186,7 +202,10 @@ public class UDPServer {
 
     private void processFin(Packet packet)
     {
-        logger.info("Processing FIN ", packet);               
+        if(_args.isVerbose())
+        {
+           logger.info("Processing FIN ", packet);               
+        }
 
         Packet response = new Packet (ACK, packet.getSequenceNumber(), packet.getPeerAddress() , packet.getPeerPort(), new byte[0]);
         sendMessage(response);
@@ -194,7 +213,10 @@ public class UDPServer {
         {
             this._clients.remove(packet.getClientId());
         }
-        logger.info("FIN has been acknowledged by server ", packet);
+        if(_args.isVerbose())
+        {
+            logger.info("FIN has been acknowledged by server ", packet);
+        }
         return ;         
     }
 
